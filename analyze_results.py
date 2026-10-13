@@ -10,6 +10,7 @@ Spider 评测结果对比与错误分析
 import argparse
 import json
 import math
+import random
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -55,6 +56,10 @@ def error_category(r):
     # 能执行但结果不对：看预测 SQL 是否缺少标准 SQL 里有的结构
     g, p = set(features(r["gold"])), set(features(r["pred"]))
     missing = [t for t in TYPES[1:] if t in g and t not in p]
+    if "nested" in missing and "set_op" in p and "set_op" not in g:
+        return "结果错误/用集合操作代替了子查询（写法不同，结果也不同）"
+    if "set_op" in missing and "nested" in p:
+        return "结果错误/用子查询代替了集合操作（写法不同，结果也不同）"
     return "结果错误/缺少结构: " + ",".join(missing) if missing else "结果错误/结构齐全，列或条件不对"
 
 
@@ -65,7 +70,8 @@ def acc(rows):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
-    ap.add_argument("--examples", type=int, default=8, help="主模型每类错误导出多少条样本")
+    ap.add_argument("--examples", type=int, default=15, help="主模型每类错误随机导出多少条样本")
+    ap.add_argument("--seed", type=int, default=0, help="随机抽样的种子，固定后结果可复现")
     args = ap.parse_args()
 
     names = [Path(f).stem.replace("_results", "") for f in args.files]
@@ -115,6 +121,17 @@ def main():
         print(f"\n## {names[1]} 对比 {names[2]}：都对 {both}，只有 {names[1]} 对 {only_a}，"
               f"只有 {names[2]} 对 {only_b}，都错 {n - both - only_a - only_b}")
 
+    # ---- 3.5 主模型的失败集中在哪些数据库 ----
+    if len(results) >= 2:
+        tot, bad = Counter(), Counter()
+        for r in results[1]:
+            tot[r["db_id"]] += 1
+            bad[r["db_id"]] += not r["correct"]
+        print(f"\n## {names[1]}：失败最多的 10 个数据库（失败数 / 该库题数）")
+        for db, k in bad.most_common(10):
+            print(f"  {db:30s} {k:3d} / {tot[db]:3d}  ({k / tot[db]:.0%})")
+        print("  （同一个数据库里往往有大量相似问题，一个系统性错误会被重复计数）")
+
     # ---- 4. 导出主模型的错误样本 ----
     if len(results) >= 2:
         by_cat = defaultdict(list)
@@ -123,10 +140,11 @@ def main():
             if c != "correct":
                 by_cat[c].append(r)
         with open("error_examples.md", "w", encoding="utf-8") as f:
-            f.write(f"# {names[1]} 的错误样本（每类最多 {args.examples} 条）\n\n")
+            f.write(f"# {names[1]} 的错误样本（每类随机抽 {args.examples} 条，seed={args.seed}）\n\n")
             for c, rows in sorted(by_cat.items(), key=lambda x: -len(x[1])):
                 f.write(f"## {c}（共 {len(rows)} 条）\n\n")
-                for r in rows[:args.examples]:
+                sample = random.Random(args.seed).sample(rows, min(args.examples, len(rows)))
+                for r in sample:
                     f.write(f"- 问题: {r['question']}\n  - db: {r['db_id']}\n  - 标准: `{r['gold']}`\n"
                             f"  - 预测: `{r['pred']}`\n  - 原因: {r['reason']}\n\n")
         print(f"\n错误样本已导出到 error_examples.md（{names[1]}）")
