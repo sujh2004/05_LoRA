@@ -1,2 +1,5 @@
 .vscode/
 results_*/
+data/
+__pycache__/
+model/
