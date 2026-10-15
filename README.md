@@ -21,9 +21,9 @@ Spider 开发集（1034 条，跨数据库），执行准确率：
 要点：
 
 - 微调使总体执行准确率提升约 38 个百分点，远超统计噪声。提升最大的是子查询和集合操作，基线在这两类上几乎答不对。
-- LoRA 的配置影响很大：把目标层从仅 attention 扩展到全部线性层，并把学习率从 1e-4 调到 2e-4，总体提升约 9.5 个百分点。
-- LoRA（全部线性层）与全量微调相差 2.8 个百分点。在同一批题目上做配对检验，差异显著，但每组只训练了一次，该检验不包含训练随机性。
-- 评测指标是自行实现的执行准确率，不是官方 test-suite 评测，**不能与 Spider 排行榜上的数字直接比较**。
+- LoRA 的配置影响很大：把目标层从仅 attention 扩展到全部线性层，并把学习率从 1e-4 调到 2e-4，总体提升约 9.8 个百分点。
+- LoRA（全部线性层）与全量微调相差 3.1 个百分点。在同一批题目上做配对检验，差异显著，但每组只训练了一次，该检验不包含训练随机性。
+
 
 ## 任务与数据
 
@@ -73,7 +73,7 @@ SQL:
 
 ### 评测的局限
 
-- 只比较在这一个数据库实例上的执行结果。两条语义不同的 SQL 可能碰巧结果相同（误判为对），而多选一列或列顺序不同会被判错（误判为错）。官方 test-suite 评测通过构造多个数据库来缓解这一问题，本项目没有使用。
+- 只比较在这一个数据库实例上的执行结果。两条语义不同的 SQL 可能碰巧结果相同（误判为对），而多选一列会被判错（误判为错）。官方 test-suite 评测通过构造多个数据库来缓解这一问题，本项目没有使用。
 - Spider 本身存在问句歧义和少量标注问题（见下文），这会压低所有系统的得分。
 - 开发集同时用于选择 LoRA 配置和报告结果：第二组 LoRA 配置是看到第一组结果后调整的，因此对 LoRA（全部线性层）的结果存在轻微的乐观偏差。Spider 的测试集不公开，没有独立的测试集可用。
 
@@ -131,9 +131,9 @@ SQL:
 
 ### 4. LoRA 与全量微调的对比
 
-- 配置影响大：仅 attention 的 LoRA 低于全量微调 12.3 个百分点；扩展到全部线性层并提高学习率后，差距缩小到 2.8 个百分点。
-- 在 simple、nested、set_op 三类上，LoRA（全部线性层）与全量微调的差距在 1.3 个百分点以内；差距主要集中在 join（差 6.1）和 order_by（差 5.5）。
-- 配对比较：624 条两者都对，只有全量微调答对 99 条，只有 LoRA（全部线性层）答对 67 条，两者都错 244 条。配对检验 z=(99−70)/√166≈2.48， p≈0.013：在这批题目上，全量微调略好于 LoRA（全部线性层）。该检验只反映评测集的抽样噪声，不包含训练随机性；每组只训练了一次，所以这个差距在重复训练下是否稳定，本项目没有验证。
+- 配置影响大：仅 attention 的 LoRA 低于全量微调 12.9 个百分点；扩展到全部线性层并提高学习率后，差距缩小到 3.1 个百分点。
+- 在 simple、nested、set_op 三类上，LoRA（全部线性层）与全量微调的差距在 1.3 个百分点以内；差距主要集中在 join（差 6.6）和 order_by（差 5.5）。
+- 配对比较：624 条两者都对，只有全量微调答对 99 条，只有 LoRA（全部线性层）答对 67 条，两者都错 244 条。配对检验 z=(99−67)/√166≈2.48, p≈0.013：在这批题目上，全量微调略好于 LoRA（全部线性层）。该检验只反映评测集的抽样噪声，不包含训练随机性；每组只训练了一次，所以这个差距在重复训练下是否稳定，本项目没有验证。
 - 以上均为单次训练的结果，且两处改动同时发生，不能把提升归因于某一个因素。
 
 ## 局限与后续方向
@@ -168,9 +168,12 @@ python eval_spider_ex.py --spider_dir ./data/spider --adapter ./results_lora/fin
 python train_lora_all.py
 python eval_spider_ex.py --spider_dir ./data/spider --adapter ./results_lora_all/final --out results/lora_all_results.jsonl
 
-# 6. 对比与错误分析
-python analyze_results.py results/baseline_results.jsonl results/full_results.jsonl results/lora_all_results.jsonl results/lora_results.jsonl
-python analyze_name_errors.py results/full_results.jsonl --spider_dir ./data/spider
+# 6. 用忽略列顺序的口径重新打分（需要 database/，不需要 GPU）
+python rescore_results.py results/baseline_results.jsonl results/full_results.jsonl results/lora_all_results.jsonl results/lora_results.jsonl --spider_dir ./data/spider
+
+# 7. 对比与错误分析（README 里的表格来自这一步）
+python analyze_results.py results/baseline_lenient_results.jsonl results/full_lenient_results.jsonl results/lora_all_lenient_results.jsonl results/lora_lenient_results.jsonl
+python analyze_name_errors.py results/full_lenient_results.jsonl --spider_dir ./data/spider
 ```
 
 ## 仓库结构

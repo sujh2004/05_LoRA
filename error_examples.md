@@ -1,96 +1,4 @@
-# full 的错误样本（每类随机抽 15 条，seed=0）
-
-## 结果错误/结构齐全，列或条件不对（共 143 条）
-
-- 问题: Which countries have greater area than that of any country in Europe?
-  - db: world_1
-  - 标准: `SELECT Name FROM country WHERE SurfaceArea  >  (SELECT min(SurfaceArea) FROM country WHERE Continent  =  "Europe")`
-  - 预测: `SELECT name FROM country WHERE surfacearea > (SELECT max(surfacearea) FROM country WHERE continent = 'Europe')`
-  - 原因: wrong_result
-
-- 问题: Return the country name and the numbers of languages spoken for each country that speaks at least 3 languages.
-  - db: world_1
-  - 标准: `SELECT COUNT(T2.Language) ,  T1.Name FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode GROUP BY T1.Name HAVING COUNT(*)  >  2`
-  - 预测: `SELECT T1.Name , COUNT(*) FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code = T2.CountryCode GROUP BY T1.Code HAVING COUNT(*) >= 3`
-  - 原因: wrong_result
-
-- 问题: Find the last name of the student who has a cat that is age 3.
-  - db: pets_1
-  - 标准: `SELECT T1.lname FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pet_age  =  3 AND T3.pettype  =  'cat'`
-  - 预测: `SELECT T1.LName FROM Student AS T1 JOIN Has_Pet AS T2 ON T1.StuID = T2.StuID JOIN Pets AS T3 ON T2.PetID = T3.PetID WHERE T3.PetType = "Cat" AND T3.pet_age = 3`
-  - 原因: wrong_result
-
-- 问题: List all the student details in reversed lexicographical order.
-  - db: student_transcripts_tracking
-  - 标准: `SELECT other_student_details FROM Students ORDER BY other_student_details DESC`
-  - 预测: `SELECT * FROM students ORDER BY other_student_details DESC`
-  - 原因: wrong_result
-
-- 问题: Which owner has paid the largest amount of money in total for their dogs? Show the owner id and zip code.
-  - db: dog_kennels
-  - 标准: `SELECT T1.owner_id ,  T1.zip_code FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id JOIN Treatments AS T3 ON T2.dog_id  =  T3.dog_id GROUP BY T1.owner_id ORDER BY sum(T3.cost_of_treatment) DESC LIMIT 1`
-  - 预测: `SELECT T1.owner_id , T1.zip_code FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id = T2.owner_id JOIN Charges AS T3 ON T2.date_arrived = T3.charge_id GROUP BY T1.owner_id ORDER BY sum(T3.charge_amount) DESC LIMIT 1`
-  - 原因: wrong_result
-
-- 问题: Show the ids of high schoolers who have friends and are also liked by someone else.
-  - db: network_1
-  - 标准: `SELECT student_id FROM Friend INTERSECT SELECT liked_id FROM Likes`
-  - 预测: `SELECT T1.id FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id INTERSECT SELECT T1.id FROM Highschooler AS T1 JOIN Likes AS T2 ON T1.ID = T2.student_id`
-  - 原因: wrong_result
-
-- 问题: What are the country codes of countries where people use languages other than English?
-  - db: world_1
-  - 标准: `SELECT DISTINCT CountryCode FROM countrylanguage WHERE LANGUAGE != "English"`
-  - 预测: `SELECT CountryCode FROM countrylanguage WHERE Language != "English"`
-  - 原因: wrong_result
-
-- 问题: What are the ids of all tv channels that have more than 2 TV channels?
-  - db: tvshow
-  - 标准: `SELECT id FROM tv_channel GROUP BY country HAVING count(*)  >  2`
-  - 预测: `SELECT id FROM TV_channel GROUP BY id HAVING count(*) > 2`
-  - 原因: wrong_result
-
-- 问题: What are the names of the high schoolers and how many friends does each have?
-  - db: network_1
-  - 标准: `SELECT T2.name ,  count(*) FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id GROUP BY T1.student_id`
-  - 预测: `SELECT count(*) , T1.name FROM highschooler AS T1 JOIN friend AS T2 ON T1.id = T2.student_id GROUP BY T1.name`
-  - 原因: wrong_result
-
-- 问题: Which regions speak Dutch or English?
-  - db: world_1
-  - 标准: `SELECT DISTINCT T1.Region FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T2.Language  =  "English" OR T2.Language  =  "Dutch"`
-  - 预测: `SELECT T1.region FROM country AS T1 JOIN countrylanguage AS T2 ON T1.code = T2.countrycode WHERE T2.language = "Dutch" OR T2.language = "English"`
-  - 原因: wrong_result
-
-- 问题: What are the first, middle, and last names for everybody enrolled in a Bachelors program?
-  - db: student_transcripts_tracking
-  - 标准: `SELECT DISTINCT T1.first_name ,  T1.middle_name ,  T1.last_name FROM Students AS T1 JOIN Student_Enrolment AS T2 ON T1.student_id  =  T2.student_id JOIN Degree_Programs AS T3 ON T2.degree_program_id  =  T3.degree_program_id WHERE T3.degree_summary_name  =  'Bachelor'`
-  - 预测: `SELECT T1.first_name , T1.middle_name , T1.last_name FROM students AS T1 JOIN student_enrolment AS T2 ON T1.student_id = T2.student_id JOIN degree_programs AS T3 ON T2.degree_program_id = T3.degree_program_id WHERE T3.degree_summary_name = 'Bachelors'`
-  - 原因: wrong_result
-
-- 问题: Tell me the owner id and last name of the owner who spent the most on treatments of his or her dogs.
-  - db: dog_kennels
-  - 标准: `SELECT T1.owner_id ,  T1.last_name FROM Owners AS T1 JOIN Dogs AS T2 ON T1.owner_id  =  T2.owner_id JOIN Treatments AS T3 ON T2.dog_id  =  T3.dog_id GROUP BY T1.owner_id ORDER BY count(*) DESC LIMIT 1`
-  - 预测: `SELECT T1.owner_id , T2.last_name FROM Owners AS T1 JOIN Owners AS T2 ON T1.owner_id = T2.owner_id JOIN TREATMENTS AS T3 ON T3.dog_id = T1.owner_id GROUP BY T1.owner_id ORDER BY sum(T3.cost_of_treatment) DESC LIMIT 1`
-  - 原因: wrong_result
-
-- 问题: What are the opening year and staff number of the museum named Plaza Museum?
-  - db: museum_visit
-  - 标准: `SELECT Num_of_Staff ,  Open_Year FROM museum WHERE name  =  'Plaza Museum'`
-  - 预测: `SELECT open_year , num_of_staff FROM museum WHERE name = 'Plaza Museum'`
-  - 原因: wrong_result
-
-- 问题: What is minimum and maximum share of TV series?
-  - db: tvshow
-  - 标准: `SELECT max(SHARE) , min(SHARE) FROM TV_series;`
-  - 预测: `SELECT min(Share) , max(Share) FROM TV_series`
-  - 原因: wrong_result
-
-- 问题: Find the number of employees hired in each shop; show the shop name as well.
-  - db: employee_hire_evaluation
-  - 标准: `SELECT count(*) ,  t2.name FROM hiring AS t1 JOIN shop AS t2 ON t1.shop_id  =  t2.shop_id GROUP BY t2.name`
-  - 预测: `SELECT T2.name , count(*) FROM hiring AS T1 JOIN shop AS T2 ON T1.shop_id = T2.shop_id GROUP BY T1.shop_id`
-  - 原因: wrong_result
+# full_lenient 的错误样本（每类随机抽 15 条，seed=0）
 
 ## 执行报错/列名不存在（共 126 条）
 
@@ -183,6 +91,98 @@
   - 标准: `SELECT DISTINCT T2.Model FROM CAR_NAMES AS T1 JOIN MODEL_LIST AS T2 ON T1.Model  =  T2.Model JOIN CAR_MAKERS AS T3 ON T2.Maker  =  T3.Id JOIN CARS_DATA AS T4 ON T1.MakeId  =  T4.Id WHERE T3.FullName  =  'General Motors' OR T4.weight  >  3500;`
   - 预测: `SELECT DISTINCT T1.Model FROM model_list AS T1 JOIN car_makers AS T2 ON T1.Maker = T2.Id WHERE T2.FullName = "General Motors" OR T1.Weight > 3500`
   - 原因: pred_error: no such column: T1.Weight
+
+## 结果错误/结构齐全，列或条件不对（共 121 条）
+
+- 问题: Show name of all students who have some friends and also are liked by someone else.
+  - db: network_1
+  - 标准: `SELECT T2.name FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id INTERSECT SELECT T2.name FROM Likes AS T1 JOIN Highschooler AS T2 ON T1.liked_id  =  T2.id`
+  - 预测: `SELECT T1.name FROM highschooler AS T1 JOIN friend AS T2 ON T1.id = T2.student_id INTERSECT SELECT T1.name FROM highschooler AS T1 JOIN likes AS T2 ON T1.id = T2.student_id`
+  - 原因: wrong_result
+
+- 问题: Which student has enrolled for the most times in any program? List the id, first name, middle name, last name, the number of enrollments and student id.
+  - db: student_transcripts_tracking
+  - 标准: `SELECT T1.student_id ,  T1.first_name ,  T1.middle_name ,  T1.last_name ,  count(*) ,  T1.student_id FROM Students AS T1 JOIN Student_Enrolment AS T2 ON T1.student_id  =  T2.student_id GROUP BY T1.student_id ORDER BY count(*) DESC LIMIT 1`
+  - 预测: `SELECT T1.student_id , T1.first_name , T1.middle_name , T1.last_name , count(*) FROM Students AS T1 JOIN Student_Enrolment AS T2 ON T1.student_id = T2.student_id GROUP BY T1.student_id ORDER BY count(*) DESC LIMIT 1`
+  - 原因: wrong_result
+
+- 问题: Give the total population and average surface area corresponding to countries in North America that have a surface area greater than 3000 .
+  - db: world_1
+  - 标准: `select sum(population) ,  avg(surfacearea) from country where continent  =  "north america" and surfacearea  >  3000`
+  - 预测: `SELECT sum(population) , avg(surfacearea) FROM country WHERE continent = 'North America' AND surfacearea > 3000`
+  - 原因: wrong_result
+
+- 问题: What are the first name and last name of the professionals who have done treatment with cost below average?
+  - db: dog_kennels
+  - 标准: `SELECT DISTINCT T1.first_name ,  T1.last_name FROM Professionals AS T1 JOIN Treatments AS T2 WHERE cost_of_treatment  <  ( SELECT avg(cost_of_treatment) FROM Treatments )`
+  - 预测: `SELECT T2.first_name , T2.last_name FROM treatments AS T1 JOIN professionals AS T2 ON T1.professional_id = T2.professional_id WHERE T1.cost_of_treatment < ( SELECT avg(cost_of_treatment) FROM treatments )`
+  - 原因: wrong_result
+
+- 问题: Find the last name of the students who currently live in the state of North Carolina but have not registered in any degree program.
+  - db: student_transcripts_tracking
+  - 标准: `SELECT T1.last_name FROM Students AS T1 JOIN Addresses AS T2 ON T1.current_address_id  =  T2.address_id WHERE T2.state_province_county  =  'NorthCarolina' EXCEPT SELECT DISTINCT T3.last_name FROM Students AS T3 JOIN Student_Enrolment AS T4 ON T3.student_id  =  T4.student_id`
+  - 预测: `SELECT T1.last_name FROM students AS T1 JOIN addresses AS T2 ON T1.current_address_id = T2.address_id WHERE T2.state_province_county = 'North Carolina' EXCEPT SELECT T1.last_name FROM students AS T1 JOIN student_enrolment AS T2 ON T1.student_id = T2.student_id`
+  - 原因: wrong_result
+
+- 问题: Find the id of students who do not have a cat pet.
+  - db: pets_1
+  - 标准: `SELECT stuid FROM student EXCEPT SELECT T1.stuid FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid JOIN pets AS T3 ON T3.petid  =  T2.petid WHERE T3.pettype  =  'cat'`
+  - 预测: `SELECT StuID FROM Student EXCEPT SELECT T1.StuID FROM Has_pet AS T1 JOIN Pets AS T2 ON T1.petid = T2.petid WHERE T2.PetType = "Cat"`
+  - 原因: wrong_result
+
+- 问题: What is the first name and country code of the oldest player?
+  - db: wta_1
+  - 标准: `SELECT first_name ,  country_code FROM players ORDER BY birth_date LIMIT 1`
+  - 预测: `SELECT first_name , country_code FROM players ORDER BY birth_date DESC LIMIT 1`
+  - 原因: wrong_result
+
+- 问题: What are the countries that are not playing cartoons written by Todd Casey?
+  - db: tvshow
+  - 标准: `SELECT country FROM TV_Channel EXCEPT SELECT T1.country FROM TV_Channel AS T1 JOIN cartoon AS T2 ON T1.id = T2.Channel WHERE T2.written_by  =  'Todd Casey'`
+  - 预测: `SELECT country FROM tv_channel EXCEPT SELECT T1.country FROM tv_channel AS T1 JOIN Cartoon AS T2 ON T1.id = T2.channel WHERE T2.directed_by = "Todd Casey"`
+  - 原因: wrong_result
+
+- 问题: Find the first name of the students who permanently live in the country Haiti or have the cell phone number 09700166582 .
+  - db: student_transcripts_tracking
+  - 标准: `select t1.first_name from students as t1 join addresses as t2 on t1.permanent_address_id  =  t2.address_id where t2.country  =  'haiti' or t1.cell_mobile_number  =  '09700166582'`
+  - 预测: `SELECT T1.first_name FROM students AS T1 JOIN addresses AS T2 ON T1.permanent_address_id = T2.address_id WHERE T2.country = 'Haiti' OR T1.cell_mobile_number = '09700166582'`
+  - 原因: wrong_result
+
+- 问题: What's the name of the course with most number of enrollments?
+  - db: student_transcripts_tracking
+  - 标准: `SELECT  T1.course_name FROM Courses AS T1 JOIN Student_Enrolment_Courses AS T2 ON T1.course_id  =  T2.course_id GROUP BY T1.course_name ORDER BY count(*) DESC LIMIT 1`
+  - 预测: `SELECT T1.course_name FROM courses AS T1 JOIN student_enrolment_courses AS T2 ON T1.course_id = T2.course_id GROUP BY T1.course_id ORDER BY count(*) DESC LIMIT 1`
+  - 原因: wrong_result
+
+- 问题: How much does the most recent treatment cost?
+  - db: dog_kennels
+  - 标准: `SELECT cost_of_treatment FROM Treatments ORDER BY date_of_treatment DESC LIMIT 1`
+  - 预测: `SELECT max(cost_of_treatment) FROM treatments ORDER BY date_of_treatment DESC LIMIT 1`
+  - 原因: wrong_result
+
+- 问题: What is the name of the conductor who has conducted the most orchestras?
+  - db: orchestra
+  - 标准: `SELECT T1.Name FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID  =  T2.Conductor_ID GROUP BY T2.Conductor_ID ORDER BY COUNT(*) DESC LIMIT 1`
+  - 预测: `SELECT T1.Name FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID = T2.Conductor_ID GROUP BY T1.Name ORDER BY COUNT(*) DESC LIMIT 1`
+  - 原因: wrong_result
+
+- 问题: Show the ids of high schoolers who have friends and are also liked by someone else.
+  - db: network_1
+  - 标准: `SELECT student_id FROM Friend INTERSECT SELECT liked_id FROM Likes`
+  - 预测: `SELECT T1.id FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id INTERSECT SELECT T1.id FROM Highschooler AS T1 JOIN Likes AS T2 ON T1.ID = T2.student_id`
+  - 原因: wrong_result
+
+- 问题: What are the first names of all players, and their average rankings?
+  - db: wta_1
+  - 标准: `SELECT avg(ranking) ,  T1.first_name FROM players AS T1 JOIN rankings AS T2 ON T1.player_id  =  T2.player_id GROUP BY T1.first_name`
+  - 预测: `SELECT T1.first_name , avg(T2.ranking) FROM players AS T1 JOIN rankings AS T2 ON T1.player_id = T2.player_id GROUP BY T1.player_id`
+  - 原因: wrong_result
+
+- 问题: Describe the section h.
+  - db: student_transcripts_tracking
+  - 标准: `SELECT section_description FROM Sections WHERE section_name  =  'h'`
+  - 预测: `SELECT section_name FROM sections WHERE section_name = 'h'`
+  - 原因: wrong_result
 
 ## 执行报错/表名不存在（共 14 条）
 
